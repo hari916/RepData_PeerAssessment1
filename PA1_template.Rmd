@@ -1,11 +1,23 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
+title: 'Reproducible Research: Peer Assessment 1'
 author: "Hari"
 date: "15 January 2017"
-output: html_document
-#keep_md: true
+tufte::tufte_html: default
+
+output: md_document
+
 ---
 
+Load required libraries
+
+```{r}
+
+library(lattice)
+library(knitr)
+library(rmarkdown)
+opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE, error=FALSE, collapse=TRUE,     tidy=TRUE, highlight=TRUE, comment='')
+#opts_knit$set(progress=TRUE, verbose=TRUE)
+```
 
 ## Loading and preprocessing the data
 ```{r}
@@ -14,18 +26,22 @@ zipfname = "repdata data activity.zip"  # this file should be placed in the work
 if (!file.exists(datafname)){
   unzip(zipfname)
 }
-
-# load required libraries
-library(lattice)
-library(knitr)
 ```
+
 ```{r}
 # Read data from activity.csv using read.csv function
 actdata<-read.csv("activity.csv", header=TRUE, colClasses=c("numeric","Date","numeric"))
 
-# Print first few rows of data (this will give details of the columns)
+```
+Print first few rows of data (this will give details of the columns)
+
+```{r}
 head(actdata)
 
+```
+
+Display summary of the data loaded
+```{r}
 #Display quick summary of the data loaded
 summary(actdata)
 
@@ -34,9 +50,9 @@ mindt <- min(actdata$date)
 maxdt <- max(actdata$date)
 durindays <- as.numeric(maxdt - mindt) + 1
 ```
-```{r}
 ## What is mean total number of steps taken per day?
 
+```{r}
 #Remove rows with missing values
 cmpl_actdata<-actdata[complete.cases(actdata),] # data with only non-missing rows
 
@@ -52,23 +68,28 @@ colnames(stps_per_day) <-  "steps"
 # maximum number of steps among all the dates + some buffer to label x-axis
 max_num_steps<-max(stps_per_day)+5000
 # plot histogram of frequency of the steps
-hist(stps_per_day$steps, main = "Total Number of Steps Per Day", 
-     xlab = "Total Number of Steps Per Day", ylab = "Frequency", 
-     breaks = 10, xlim = c(0, max_num_steps), ylim = c(0, 20), col = "green")
+hist(stps_per_day$steps, main = "Total Number of Steps Per Day", xlab = "Total Number of Steps Per Day", ylab = "Frequency", breaks = 10, xlim = c(0, max_num_steps), ylim = c(0, 20), col = "green")
 
 #Calculate and report the mean and median total number of steps taken per day
 
 mean_num_steps <- format(mean(stps_per_day$steps, na.rm = TRUE), big.mark=",",scientific=F)
 median_num_steps <- format(median(stps_per_day$steps, na.rm = TRUE),big.mark=",",scientific=F)
 
+##mean
+mean_num_steps
+
+##meadian
+median_num_steps
+
+```
 ## What is the average daily activity pattern?
 
+```{r}
 # Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, 
 # coveraged across all days (y-axis)
 #calculate average number of steps by intervals without missing values
-avg_num_stps_intvl <- as.data.frame(tapply(cmpl_actdata$steps, 
-                                           INDEX = cmpl_actdata$interval, 
-                                           FUN = "mean", na.rm = TRUE))
+avg_num_stps_intvl <- as.data.frame(tapply(cmpl_actdata$steps, INDEX = cmpl_actdata$interval, FUN = "mean", na.rm = TRUE))
+
 #Name the column as avg_steps
 colnames(avg_num_stps_intvl) <- "avg_steps"
 
@@ -85,9 +106,13 @@ plot(avg_num_stps_intvl$interval, avg_num_stps_intvl$avg_steps, type = "l",
      xlab = "Time Interval (5-mins)", ylab = "Average number of steps", 
      main = "Average Number of Steps by Time  Interval", col="blue")
 # Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
-#Based on the above data analysis and trends we can see that the 5-miniutes interval with maximum number of average steps per day is 835.
+#Based on the above data analysis we can see that the 5-miniutes interval with maximum number of average steps per day is 835.
 
+```
 ## Imputing missing values
+
+```{r}
+
 #Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 # Missing data
 incmpl_actdata<-actdata[!complete.cases(actdata),] ## data with only missing rows
@@ -106,6 +131,7 @@ row.names(median_stps_intvl)<-NULL
 mean_median<-merge(median_stps_intvl,avg_num_stps_intvl, by="interval")
 #merge mean and median 
 actdata_with_sum<-merge(actdata,mean_median, by="interval")
+print("Print few records of clculated mean values.")
 head(actdata_with_sum)
 
 #Create a new dataset that is equal to the original dataset but with the missing data filled in.
@@ -117,6 +143,7 @@ for (i in (1:nrow(actdata_with_sum))) {
 }
 
 actdata_no_miss<-actdata_with_sum[, c("steps","date", "interval")]
+print("Summary of dataset with missing data filled ...")
 summary(actdata)
 
 #Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number #of steps taken per day. 
@@ -148,5 +175,22 @@ for (i in (1:nrow(actdata_no_miss))) {
 #Check first few records
 head(actdata_no_miss)
 
-## Are there differences in activity patterns between weekdays and weekends?
+mean_stps_per_intvl_imput <- aggregate(actdata_no_miss$steps, by = list(actdata_no_miss$interval, 
+    actdata_no_miss$week_day_factor), FUN = "mean", na.rm = TRUE)
+colnames(mean_stps_per_intvl_imput) <- c("interval", "weekday", "avg_steps")
+
+sort_order <- order(as.numeric(mean_stps_per_intvl_imput$interval))
+mean_stps_per_intvl <- mean_stps_per_intvl_imput[sort_order, ]
+
+mean_by_day_type <- aggregate( actdata_no_miss$steps, by = list( actdata_no_miss$week_day_factor), FUN = "mean", na.rm = TRUE)
+mean_weekdays <- round(mean_by_day_type[1, 2], 2)
+mean_weekends <- round(mean_by_day_type[2, 2], 2)
+
+xyplot(data = mean_stps_per_intvl, 
+       avg_steps ~ as.numeric(interval) | as.factor(weekday), 
+           type = "l", layout = c(1, 2), col = c("blue","red"), 
+    main = "Average Number of Steps by Time Interval", 
+    xlab = "Time Interval (5-mins)", ylab = "Average number of steps")
+
+
 ```
